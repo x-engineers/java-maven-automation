@@ -1,0 +1,104 @@
+pipeline {
+    agent any
+    
+    environment {
+        maven = 'default'
+    }
+    
+    stages {
+        
+        stage('Clone app') {
+            steps {
+                echo '# cloning the application...'
+                git credentialsId: 'git-private-ssh', url: 'git@github.com:th33ngi/FOCUS.git', branch: 'main'
+            }
+        }
+        
+        stage('Build app') {
+            steps {
+                echo '# building the application...'
+                bat "mvn -B -DskipTests clean compile"
+            }
+        }
+        
+        stage('Add params') {
+            steps {
+                script {
+                    def props = readProperties file:'./src/main/java/com/focus/config/config.properties'
+                    properties([
+                        parameters([
+                            choice(
+                                choices: ["${props.windows}", "${props.linux}", "${props.mac}"], 
+                                name: 'Platform'
+                            ),
+                            choice(
+                                choices: ["${props.qe}", "${props.staging}", "${props.prod}"],
+                                name: 'Environment'
+                            ),
+                            choice(
+                                choices: ["${props.chrome}", "${props.firefox}", "${props.iexplorer}"],
+                                name: 'Browser'
+                            ),
+                            [$class: 'ChoiceParameter', 
+                                choiceType: 'PT_RADIO', 
+                                filterLength: 1, 
+                                filterable: false, 
+                                name: 'TestSuite',
+                                script: [$class: 'GroovyScript', 
+                                    fallbackScript: [classpath: [], 
+                                        sandbox: false, 
+                                        script: 'return[\'error\']'
+                                    ], 
+                                    script: [classpath: [], 
+                                        sandbox: false, 
+                                        script: '''return['testng.xml','smoke.xml','regression.xml']'''
+                                    ]
+                                ]
+                            ],
+                            string(
+                                defaultValue: "${props.suitepath}", 
+                                name: 'TestSuitePath',
+				                trim: true
+                            ),
+                            string(
+                                defaultValue: "${props.appurl}",
+                                name: 'AppUrl',
+				                trim: true
+                            ),
+                            string(
+                                defaultValue: "${props.appversion}", 
+                                name: 'Version',
+				                trim: true
+                            ),
+                        ])
+                    ])
+                }
+            }
+        }
+        
+        stage('Test app') {
+            steps {
+                echo '# teting the application...'
+                bat 'mvn clean test -Dplatform=%Platform% -Denv=%Environment% -Dbrowser=%Browser%  -DtestSuite=%TestSuitePath%%TestSuite% -DappUrl=%AppUrl% -Drelease=%Version%'
+            }
+        }
+        
+        stage('Release app') {
+            steps {
+                echo '# releasing the application...'
+            }
+        }
+        
+        stage('Deploy app') {
+            steps {
+                echo '# deploying the application...'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
