@@ -60,7 +60,7 @@ _Working on it..._
 
 ## Authors ✒️
 
-* ** Manuel Reyes:** *Initial Work -  Documentation [th33ngi](https://github.com/th33ngi)*
+* Manuel Reyes: Initial Work -  Documentation [th33ngi](https://github.com/th33ngi)
 
 ```
 Organization: X-Engineers
